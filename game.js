@@ -16,56 +16,90 @@ const RANKS = ['2','3','4','5','6','7','8','9','10','J','Q','K','A'];
 const VALUES = { '2':2, '3':3, '4':4, '5':5, '6':6, '7':7, '8':8, '9':9, '10':10, 'J':11, 'Q':12, 'K':13, 'A':14 };
 
 // --- DOM Elements ---
-const screens = { login: document.getElementById('login-screen'), game: document.getElementById('game-screen') };
+
+  // --- DOM Elements (Updated) ---
 const ui = {
+    // ... keep existing UI references ...
     hand: document.getElementById('my-hand'),
     trick: document.getElementById('trick-area'),
     status: document.getElementById('turn-indicator'),
     bidOverlay: document.getElementById('bid-overlay'),
     scoreOverlay: document.getElementById('score-overlay'),
     scoreTable: document.querySelector('#score-table tbody'),
+    
+    // NEW references
+    btnCreate: document.getElementById('btn-create'),
     btnJoin: document.getElementById('btn-join'),
-    nameInput: document.getElementById('player-name')
+    nameInput: document.getElementById('player-name'),
+    roomInput: document.getElementById('room-code-input')
 };
 
 // --- Networking & Setup ---
 
-ui.btnJoin.addEventListener('click', async () => {
-    const name = ui.nameInput.value.trim() || 'Player';
-    document.getElementById('status-msg').innerText = "Looking for room...";
+// OPTION 1: Create a New Room
+ui.btnCreate.addEventListener('click', () => {
+    const name = ui.nameInput.value.trim();
+    if (!name) return alert("Please enter your name!");
+
+    // Generate a simple 4-digit Room Code
+    const newRoomId = Math.floor(1000 + Math.random() * 9000).toString();
     
-    // Simple Matchmaking: Find first waiting room or create
-    const snapshot = await dbRef.rooms.once('value');
-    const rooms = snapshot.val() || {};
+    joinGame(name, newRoomId, true); // true = creating
+});
+
+// OPTION 2: Join Existing Room
+ui.btnJoin.addEventListener('click', () => {
+    const name = ui.nameInput.value.trim();
+    const roomCode = ui.roomInput.value.trim();
+
+    if (!name) return alert("Please enter your name!");
+    if (!roomCode) return alert("Please enter a Room Code!");
+
+    joinGame(name, roomCode, false); // false = joining
+});
+
+async function joinGame(name, targetRoomId, isCreating) {
+    document.getElementById('status-msg').innerText = isCreating ? "Creating room..." : "Joining room...";
     
-    let targetRoomId = null;
-    
-    // Look for open room
-    for (const [id, r] of Object.entries(rooms)) {
-        if (r.status === 'WAITING' && Object.keys(r.players || {}).length < 4) {
-            targetRoomId = id;
-            break;
-        }
+    const roomSnap = await dbRef.rooms.child(targetRoomId).once('value');
+    const roomExists = roomSnap.exists();
+
+    if (isCreating && roomExists) {
+        // Only happens if random ID collides, retry automatically
+        ui.btnCreate.click(); 
+        return;
     }
-    
-    if (!targetRoomId) {
-        // Create new room
-        targetRoomId = 'room_' + Date.now();
+
+    if (!isCreating && !roomExists) {
+        alert("Room not found! Check the code.");
+        document.getElementById('status-msg').innerText = "Room not found.";
+        return;
+    }
+
+    // Check if room is full
+    if (!isCreating && roomSnap.val().players && Object.keys(roomSnap.val().players).length >= 4) {
+        alert("Room is full!");
+        return;
+    }
+
+    // Setup Room Data if creating
+    if (isCreating) {
         await dbRef.rooms.child(targetRoomId).set({
             status: 'WAITING',
             round: 1,
             turnIndex: 0,
             trick: [],
-            trumpBroken: false // Spades broken? (optional rule, strictly Spades always trump)
+            trumpBroken: false
         });
     }
-    
+
+    // Connect
     roomId = targetRoomId;
     myId = 'p_' + Math.random().toString(36).substr(2, 9);
     roomRef = dbRef.rooms.child(roomId);
     playerRef = roomRef.child('players').child(myId);
 
-    // Set initial player data
+    // Add Player
     await playerRef.set({
         name: name,
         id: myId,
@@ -76,15 +110,18 @@ ui.btnJoin.addEventListener('click', async () => {
         ready: true
     });
 
-    // Remove player on disconnect
+    // Handle Disconnect
     playerRef.onDisconnect().remove();
 
     setupListeners();
     screens.login.classList.remove('active');
     screens.game.classList.add('active');
-    document.getElementById('room-id-display').innerText = roomId.slice(-4);
-});
+    
+    // Show Room ID on screen so you can share it
+    document.getElementById('room-id-display').innerText = roomId; 
+}
 
+// ... Keep the rest of the file (setupListeners, renderGame, etc.) exactly the same ...
 function setupListeners() {
     roomRef.on('value', snap => {
         const data = snap.val();
