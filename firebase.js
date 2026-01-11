@@ -6,7 +6,7 @@ const firebaseConfig = {
   storageBucket: "call-breke.firebasestorage.app",
   messagingSenderId: "908751603046",
   appId: "1:908751603046:web:fd30e07b9e6400b35c74a7",
-  measurementId: "G-V2D55S47QV
+  measurementId: "G-V2D55S47QV"
 };
 
 firebase.initializeApp(firebaseConfig);
