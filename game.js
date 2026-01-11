@@ -1,98 +1,476 @@
-const suits = ["♠","♥","♦","♣"];
-const values = ["2","3","4","5","6","7","8","9","10","J","Q","K","A"];
+// game.js
 
-const roomId = "room1";
-const playerId = "P" + Math.floor(Math.random()*10000);
+// --- Global State ---
+let myId = null;
+let roomId = null;
+let roomRef = null;
+let playerRef = null;
+let gameState = null;
+let myHand = [];
+let players = [];
+let audio = new Audio('pop.mp3'); // Ensure pop.mp3 exists
 
-let gameRef = db.ref("rooms/" + roomId);
+// Suits: S=Spades, H=Hearts, C=Clubs, D=Diamonds
+const SUITS = ['S', 'H', 'C', 'D'];
+const RANKS = ['2','3','4','5','6','7','8','9','10','J','Q','K','A'];
+const VALUES = { '2':2, '3':3, '4':4, '5':5, '6':6, '7':7, '8':8, '9':9, '10':10, 'J':11, 'Q':12, 'K':13, 'A':14 };
 
-gameRef.once("value", snap => {
-  if (!snap.exists()) {
-    gameRef.set({
-      players: {},
-      turn: null,
-      phase: "waiting",
-      table: []
+// --- DOM Elements ---
+const screens = { login: document.getElementById('login-screen'), game: document.getElementById('game-screen') };
+const ui = {
+    hand: document.getElementById('my-hand'),
+    trick: document.getElementById('trick-area'),
+    status: document.getElementById('turn-indicator'),
+    bidOverlay: document.getElementById('bid-overlay'),
+    scoreOverlay: document.getElementById('score-overlay'),
+    scoreTable: document.querySelector('#score-table tbody'),
+    btnJoin: document.getElementById('btn-join'),
+    nameInput: document.getElementById('player-name')
+};
+
+// --- Networking & Setup ---
+
+ui.btnJoin.addEventListener('click', async () => {
+    const name = ui.nameInput.value.trim() || 'Player';
+    document.getElementById('status-msg').innerText = "Looking for room...";
+    
+    // Simple Matchmaking: Find first waiting room or create
+    const snapshot = await dbRef.rooms.once('value');
+    const rooms = snapshot.val() || {};
+    
+    let targetRoomId = null;
+    
+    // Look for open room
+    for (const [id, r] of Object.entries(rooms)) {
+        if (r.status === 'WAITING' && Object.keys(r.players || {}).length < 4) {
+            targetRoomId = id;
+            break;
+        }
+    }
+    
+    if (!targetRoomId) {
+        // Create new room
+        targetRoomId = 'room_' + Date.now();
+        await dbRef.rooms.child(targetRoomId).set({
+            status: 'WAITING',
+            round: 1,
+            turnIndex: 0,
+            trick: [],
+            trumpBroken: false // Spades broken? (optional rule, strictly Spades always trump)
+        });
+    }
+    
+    roomId = targetRoomId;
+    myId = 'p_' + Math.random().toString(36).substr(2, 9);
+    roomRef = dbRef.rooms.child(roomId);
+    playerRef = roomRef.child('players').child(myId);
+
+    // Set initial player data
+    await playerRef.set({
+        name: name,
+        id: myId,
+        score: 0,
+        tricksWon: 0,
+        bid: 0,
+        hand: [],
+        ready: true
     });
-  }
-  joinGame();
+
+    // Remove player on disconnect
+    playerRef.onDisconnect().remove();
+
+    setupListeners();
+    screens.login.classList.remove('active');
+    screens.game.classList.add('active');
+    document.getElementById('room-id-display').innerText = roomId.slice(-4);
 });
 
-function joinGame() {
-  const pRef = gameRef.child("players/" + playerId);
-  pRef.set({
-    bid: null,
-    hand: [],
-    tricks: 0
-  });
+function setupListeners() {
+    roomRef.on('value', snap => {
+        const data = snap.val();
+        if (!data) return alert("Room closed"); // Basic handling
+        gameState = data;
+        players = Object.values(data.players || {});
+        
+        // Auto-start if 4 players and waiting
+        if (players.length === 4 && data.status === 'WAITING' && isHost()) {
+            startRound();
+        }
 
-  gameRef.child("players").on("value", snap => {
-    document.getElementById("players").innerHTML = "";
-    snap.forEach(p => {
-      let d = document.createElement("div");
-      d.className = "player";
-      d.textContent = p.key;
-      document.getElementById("players").appendChild(d);
+        renderGame();
+    });
+}
+
+function isHost() {
+    // Simplest host logic: The player with the "smallest" ID string (lexicographically) 
+    // or just the first one in the object keys.
+    const ids = Object.keys(gameState.players).sort();
+    return ids[0] === myId;
+}
+
+// --- Game Logic: State Transitions ---
+
+function startRound() {
+    const deck = createDeck();
+    const hands = dealDeck(deck);
+    const updates = { status: 'BIDDING', trick: [], trickStarter: 0, turnIndex: 0 };
+    
+    // Assign hands to players in DB
+    const pIds = Object.keys(gameState.players).sort();
+    pIds.forEach((pid, idx) => {
+        updates[`players/${pid}/hand`] = hands[idx];
+        updates[`players/${pid}/bid`] = 0;
+        updates[`players/${pid}/tricksWon`] = 0;
+        updates[`players/${pid}/currentCard`] = null; // Clear previous played card
+    });
+    
+    roomRef.update(updates);
+}
+
+function createDeck() {
+    let d = [];
+    SUITS.forEach(s => RANKS.forEach(r => d.push({suit:s, rank:r, val:VALUES[r]})));
+    // Shuffle
+    for(let i=d.length-1; i>0; i--){
+        const j = Math.floor(Math.random()*(i+1));
+        [d[i], d[j]] = [d[j], d[i]];
+    }
+    return d;
+}
+
+function dealDeck(deck) {
+    // 4 hands of 13
+    return [deck.slice(0,13), deck.slice(13,26), deck.slice(26,39), deck.slice(39,52)];
+}
+
+// --- UI Rendering ---
+
+function renderGame() {
+    if(!gameState) return;
+
+    // 1. Position Players (Rotate so "Me" is bottom)
+    const pIds = Object.keys(gameState.players).sort();
+    const myIdx = pIds.indexOf(myId);
+    
+    // Map relative indices: 0=Me, 1=Right, 2=Top, 3=Left
+    const positions = ['me', 'right', 'top', 'left'];
+    
+    pIds.forEach((pid, i) => {
+        // Calculate relative index based on my position
+        // If myIdx is 0, i=0 -> 0 (me), i=1 -> 1 (right)
+        // If myIdx is 1, i=1 -> 0 (me), i=2 -> 1 (right)
+        let relIdx = (i - myIdx + 4) % 4;
+        const domId = `p-${positions[relIdx]}`;
+        const pData = gameState.players[pid];
+        
+        const el = document.getElementById(domId);
+        if(el) {
+            el.querySelector('.p-name').innerText = pData.name;
+            el.querySelector('.p-info').innerText = `Bid: ${pData.bid || '-'} / Won: ${pData.tricksWon}`;
+            
+            // Highlight turn
+            if(gameState.status === 'PLAYING' || gameState.status === 'BIDDING') {
+                if(i === gameState.turnIndex) el.classList.add('active-turn');
+                else el.classList.remove('active-turn');
+            }
+        }
     });
 
-    if (snap.numChildren() === 4) startGame();
-  });
+    // 2. My Hand
+    const me = gameState.players[myId];
+    if (me && me.hand) {
+        renderHand(me.hand);
+        document.getElementById('my-bid').innerText = me.bid;
+        document.getElementById('my-won').innerText = me.tricksWon;
+    }
+
+    // 3. Status Text
+    if(gameState.status === 'WAITING') ui.status.innerText = `Waiting for players (${players.length}/4)...`;
+    else if(gameState.status === 'BIDDING') ui.status.innerText = `Bidding phase...`;
+    else if(gameState.status === 'PLAYING') {
+        const turnPlayerId = pIds[gameState.turnIndex];
+        const name = gameState.players[turnPlayerId].name;
+        ui.status.innerText = (turnPlayerId === myId) ? "YOUR TURN" : `${name}'s Turn`;
+    }
+
+    // 4. Overlays
+    // Bidding
+    if(gameState.status === 'BIDDING' && me.bid === 0) {
+        ui.bidOverlay.classList.remove('hidden');
+        renderBidButtons();
+    } else {
+        ui.bidOverlay.classList.add('hidden');
+    }
+
+    // Trick Area
+    renderTrick(pIds, myIdx);
+    
+    // Scoreboard (Round End)
+    if(gameState.status === 'SCORING') {
+        renderScoreboard();
+        ui.scoreOverlay.classList.remove('hidden');
+    } else {
+        ui.scoreOverlay.classList.add('hidden');
+    }
 }
 
-function startGame() {
-  gameRef.child("phase").set("bidding");
-  dealCards();
-  document.getElementById("bidding").classList.remove("hidden");
-}
-
-function dealCards() {
-  let deck = [];
-  suits.forEach(s => values.forEach(v => deck.push(v+s)));
-  deck.sort(() => Math.random() - 0.5);
-
-  gameRef.child("players").once("value", snap => {
-    let i = 0;
-    snap.forEach(p => {
-      gameRef.child("players/"+p.key+"/hand").set(deck.slice(i,i+13));
-      i += 13;
+function renderHand(handArray) {
+    ui.hand.innerHTML = '';
+    // Sort hand: Spades, Hearts, Clubs, Diamonds (or alternates colors)
+    // Custom sort: Suit priority then Value
+    handArray.sort((a,b) => {
+        if(a.suit !== b.suit) return a.suit.localeCompare(b.suit);
+        return b.val - a.val; // High to low
     });
-  });
+
+    handArray.forEach((card, idx) => {
+        const div = document.createElement('div');
+        div.className = `card ${['H','D'].includes(card.suit)?'red':'black'}`;
+        div.innerHTML = `${getSuitIcon(card.suit)}<br>${card.rank}`;
+        div.onclick = () => playCard(card, idx);
+        
+        // Validation highlighting
+        if(gameState.status === 'PLAYING' && isMyTurn()) {
+            if(!isValidMove(card)) div.classList.add('disabled');
+        } else {
+            div.classList.add('disabled'); // Not my turn
+        }
+        
+        ui.hand.appendChild(div);
+    });
 }
 
-function submitBid() {
-  let bid = document.getElementById("bidValue").value;
-  gameRef.child("players/"+playerId+"/bid").set(parseInt(bid));
-  document.getElementById("bidding").classList.add("hidden");
+function renderTrick(pIds, myIdx) {
+    ui.trick.innerHTML = '';
+    if(!gameState.trick) return;
+
+    // Trick array stores { playerId, card }
+    // We need to position them visually based on relative position
+    gameState.trick.forEach(play => {
+        // Find owner index
+        const ownerIdx = pIds.indexOf(play.playerId);
+        let relIdx = (ownerIdx - myIdx + 4) % 4; // 0=me, 1=right, 2=top, 3=left
+        
+        const cardDiv = document.createElement('div');
+        cardDiv.className = `played-card ${['H','D'].includes(play.card.suit)?'red':'black'}`;
+        cardDiv.innerHTML = `${play.card.rank} ${getSuitIcon(play.card.suit)}`;
+        
+        // CSS transforms to place them
+        // Me: translate(0, 40px)
+        // Right: translate(60px, 0)
+        // Top: translate(0, -40px)
+        // Left: translate(-60px, 0)
+        const transforms = [
+            'translate(0, 50px)', 'translate(60px, 0)', 'translate(0, -50px)', 'translate(-60px, 0)'
+        ];
+        cardDiv.style.transform = transforms[relIdx];
+        ui.trick.appendChild(cardDiv);
+    });
 }
 
-gameRef.child("players/"+playerId+"/hand").on("value", snap => {
-  let handDiv = document.getElementById("hand");
-  handDiv.innerHTML = "";
-  snap.forEach(card => {
-    let c = document.createElement("div");
-    c.className = "card playable";
-    c.textContent = card.val();
-    c.onclick = () => playCard(card.val());
-    handDiv.appendChild(c);
-  });
-});
-
-function playCard(card) {
-  document.getElementById("cardSound").play();
-  gameRef.child("table").push({player: playerId, card});
-  gameRef.child("players/"+playerId+"/hand").once("value", snap => {
-    let newHand = snap.val().filter(c => c !== card);
-    gameRef.child("players/"+playerId+"/hand").set(newHand);
-  });
+function renderBidButtons() {
+    const container = document.getElementById('bid-buttons');
+    container.innerHTML = '';
+    for(let i=1; i<=8; i++) {
+        const btn = document.createElement('button');
+        btn.innerText = i;
+        btn.onclick = () => submitBid(i);
+        container.appendChild(btn);
+    }
 }
 
-gameRef.child("table").on("value", snap => {
-  let table = document.getElementById("table");
-  table.innerHTML = "";
-  snap.forEach(p => {
-    let c = document.createElement("div");
-    c.className = "card";
-    c.textContent = p.val().card;
-    table.appendChild(c);
-  });
-});
+function renderScoreboard() {
+    ui.scoreTable.innerHTML = '';
+    Object.values(gameState.players).forEach(p => {
+        const tr = document.createElement('tr');
+        // Score calc logic applied previously, here we just show
+        tr.innerHTML = `<td>${p.name}</td><td>${p.bid}</td><td>${p.tricksWon}</td><td>${p.score.toFixed(1)}</td>`;
+        ui.scoreTable.appendChild(tr);
+    });
+    
+    if(isHost()) {
+        const btn = document.getElementById('btn-next-round');
+        btn.classList.remove('hidden');
+        btn.onclick = nextRound;
+    }
+}
+
+function getSuitIcon(s) {
+    const icons = { 'S':'♠', 'H':'♥', 'C':'♣', 'D':'♦' };
+    return icons[s];
+}
+
+// --- Player Actions ---
+
+function submitBid(amount) {
+    roomRef.child(`players/${myId}/bid`).set(amount);
+    
+    // Check if everyone bid
+    const allBids = Object.values(gameState.players).every(p => p.bid > 0);
+    if(allBids) {
+        // Only host triggers state change to keep sync clean
+        if(isHost()) {
+            roomRef.update({ status: 'PLAYING', turnIndex: gameState.trickStarter || 0 });
+        }
+    }
+}
+
+function isMyTurn() {
+    const pIds = Object.keys(gameState.players).sort();
+    return pIds[gameState.turnIndex] === myId;
+}
+
+function isValidMove(card) {
+    const trick = gameState.trick || [];
+    if(trick.length === 0) return true; // Lead any card
+
+    const leadCard = trick[0].card;
+    const leadSuit = leadCard.suit;
+    
+    // Rule 1: Must follow suit
+    const hasLeadSuit = myHandContains(leadSuit);
+    if(hasLeadSuit) {
+        if(card.suit === leadSuit) {
+            // Optional: Must beat highest card of suit (Standard Callbreak rule)
+            // For simplicity in this demo, just follow suit is enforced strictly.
+            // Advanced check: if I have higher card of lead suit than current highest, I should play it.
+            return true;
+        }
+        return false;
+    }
+
+    // Rule 2: If no lead suit, must play Spade (Trump)
+    const hasSpade = myHandContains('S');
+    if(hasSpade) {
+        if(card.suit === 'S') {
+            // Must beat existing spades if possible
+            return true;
+        }
+        return false; 
+    }
+
+    // Rule 3: No lead suit, no spade -> Play anything
+    return true;
+}
+
+function myHandContains(suit) {
+    const me = gameState.players[myId];
+    return me.hand.some(c => c.suit === suit);
+}
+
+function playCard(card, indexInHand) {
+    if(!isMyTurn()) return;
+    if(!isValidMove(card)) return; // Double check
+    
+    audio.play().catch(e=>{}); // Simple sound trigger
+
+    // Remove from local hand optimistically (DB update handles real state)
+    // Actually, let's just push to DB and let the listener update UI
+    const me = gameState.players[myId];
+    const newHand = me.hand.filter((_, i) => i !== indexInHand);
+    
+    // 1. Update Hand
+    roomRef.child(`players/${myId}/hand`).set(newHand);
+    
+    // 2. Add to Trick
+    const currentTrick = gameState.trick || [];
+    currentTrick.push({ playerId: myId, card: card });
+    roomRef.child('trick').set(currentTrick);
+    
+    // 3. Update Turn
+    let nextTurn = (gameState.turnIndex + 1) % 4;
+    
+    // Check if trick complete (4 cards)
+    if(currentTrick.length === 4) {
+        // Wait small delay then evaluate winner (handled by Host or everyone? Better Host)
+        if(isHost()) {
+            setTimeout(() => evaluateTrick(currentTrick), 1500);
+        }
+        // Set turn to -1 to block inputs during animation
+        roomRef.update({ turnIndex: -1 }); 
+    } else {
+        roomRef.update({ turnIndex: nextTurn });
+    }
+}
+
+function evaluateTrick(trick) {
+    // Determine winner
+    const leadSuit = trick[0].card.suit;
+    let highestRank = -1;
+    let winnerId = null;
+    let playedSpade = false;
+
+    // Check for Spades first
+    trick.forEach(p => { if(p.card.suit === 'S') playedSpade = true; });
+
+    const targetSuit = playedSpade ? 'S' : leadSuit;
+
+    trick.forEach(p => {
+        if(p.card.suit === targetSuit) {
+            if(p.card.val > highestRank) {
+                highestRank = p.card.val;
+                winnerId = p.playerId;
+            }
+        }
+    });
+
+    // Update Winner stats
+    const winnerRef = roomRef.child(`players/${winnerId}`);
+    winnerRef.child('tricksWon').transaction(cur => (cur || 0) + 1);
+
+    // Determine next leader index
+    const pIds = Object.keys(gameState.players).sort();
+    const winnerIdx = pIds.indexOf(winnerId);
+
+    // Check if Round Over (Everyone out of cards)
+    // We can check if any player has 0 cards, or just count tricks. 
+    // 13 tricks per round.
+    // However, simplest check: is players[myId].hand empty?
+    // Since we are host, we check our own hand or track a global counter.
+    // Easier: Check DB hand length of p1.
+    dbRef.rooms.child(roomId).child(`players/${pIds[0]}/hand`).once('value', snap => {
+        if(!snap.exists() || snap.val().length === 0) {
+            endRound();
+        } else {
+            // Next Trick
+            roomRef.update({
+                trick: [],
+                turnIndex: winnerIdx
+            });
+        }
+    });
+}
+
+function endRound() {
+    // Calculate Scores
+    const updates = {};
+    Object.keys(gameState.players).forEach(pid => {
+        const p = gameState.players[pid];
+        let roundScore = 0;
+        if(p.tricksWon < p.bid) {
+            roundScore = -p.bid;
+        } else {
+            roundScore = p.bid + (p.tricksWon - p.bid) * 0.1;
+        }
+        updates[`players/${pid}/score`] = (p.score || 0) + roundScore;
+    });
+    
+    updates.status = 'SCORING';
+    roomRef.update(updates);
+}
+
+function nextRound() {
+    // Reset for next round
+    // Move dealer/turn? Usually rotate.
+    const nextRoundNum = gameState.round + 1;
+    // Rotate starter
+    const newStarter = (gameState.round) % 4; // Round 1 starts at 0, Round 2 starts at 1...
+    
+    roomRef.update({
+        round: nextRoundNum,
+        trickStarter: newStarter,
+        status: 'WAITING_DEAL' // Intermediate state to trigger deal
+    }).then(() => {
+        startRound(); // Host deals again
+    });
+}
