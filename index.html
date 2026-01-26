@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="utf-8" />
-  <title>Dots & Dice (Mystery Lucky Mode)</title>
+  <title>Dots & Dice (Fixed Audio & Timing)</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
   <style>
     /* BASIC SETUP */
@@ -203,14 +203,18 @@
 
   auth.signInAnonymously().then(u => { myUid = u.user.uid; }).catch(e => alert("Net Error"));
 
-  const sndRoll = new Audio('https://cdn.discordapp.com/attachments/1420003318096461825/1459851313398546472/dice-roll-sound.mp3?ex=697542bb&is=6973f13b&hm=c8ef082f052c21f57395b20dc89a0ce5bae5ce835c72ee7131006b1ffc46fee1&');
+  // SOUND ASSETS
+  const sndRoll = new Audio('https://assets.mixkit.co/active_storage/sfx/2573/2573-preview.mp3');
   const sndLine = new Audio('https://assets.mixkit.co/active_storage/sfx/2571/2571-preview.mp3');
+  const sndBoom = new Audio('https://assets.mixkit.co/active_storage/sfx/2000/2000-preview.mp3'); // Boom
+  const sndLucky = new Audio('https://assets.mixkit.co/active_storage/sfx/2019/2019-preview.mp3'); // Ting!
 
   let currentRoom = null;
   let roomData = null;
   let gameInstance = null;
   let autoDeleteInterval = null;
   let lastProcessedRoll = 0;
+  let isRollingAnim = false; // Flag to check if dice is spinning
 
   // --- CREATE ROOM ---
   document.getElementById('createRoomBtn').onclick = async () => {
@@ -239,14 +243,10 @@
     if(mode === 'lucky') {
       const allCoords = [];
       for(let r=0; r<rows; r++) for(let c=0; c<cols; c++) allCoords.push(`${r}_${c}`);
-      
-      // Shuffle
       for (let i = allCoords.length - 1; i > 0; i--) {
         const j = Math.floor(Math.random() * (i + 1));
         [allCoords[i], allCoords[j]] = [allCoords[j], allCoords[i]];
       }
-      
-      // Assign 2 Bonus, 1 Boom
       if(allCoords.length >= 3) {
         specialBoxes[allCoords[0]] = 'bonus'; // Star 1
         specialBoxes[allCoords[1]] = 'bonus'; // Star 2
@@ -255,7 +255,7 @@
     }
 
     await db.ref('rooms/' + code).set({
-      config: { maxPlayers: maxP, rows, cols, mode }, // Save Mode
+      config: { maxPlayers: maxP, rows, cols, mode },
       players: { [myUid]: { name, colorIdx: 0, score: 0 } },
       state: 'waiting',
       lastActive: Date.now(),
@@ -266,7 +266,7 @@
       filledBoxes: 0,
       totalBoxes: rows * cols,
       edges: {}, boxes: {},
-      specialBoxes: specialBoxes // Save Specials
+      specialBoxes: specialBoxes
     });
     enterRoom(code, true);
   };
@@ -324,7 +324,6 @@
       r.turnOrder = pIds; r.turnIndex = 0;
       Object.keys(r.players).forEach(uid => { r.players[uid].score = 0; });
       
-      // RE-GENERATE LUCKY BOXES FOR NEW GAME
       if(r.config.mode === 'lucky') {
         const allCoords = [];
         for(let row=0; row<r.config.rows; row++) for(let col=0; col<r.config.cols; col++) allCoords.push(`${row}_${col}`);
@@ -339,7 +338,6 @@
             r.specialBoxes[allCoords[2]] = 'boom';
         }
       }
-
       return r;
     });
   };
@@ -359,11 +357,21 @@
     db.ref('rooms/' + code).on('value', snap => {
       roomData = snap.val();
       if(!roomData) { alert("Room closed."); location.reload(); return; }
-      updateHTML_UI();
+      
+      // CHECK IF NEW ROLL HAPPENED
       if(roomData.latestRoll && roomData.latestRoll.ts > lastProcessedRoll) {
         lastProcessedRoll = roomData.latestRoll.ts;
-        trigger3DDice(roomData.latestRoll.val);
+        isRollingAnim = true;
+        // Trigger dice visuals + Wait for completion
+        trigger3DDice(roomData.latestRoll.val, () => {
+          isRollingAnim = false;
+          updateHTML_UI(); // Update lines text AFTER animation
+        });
+        updateHTML_UI(); // Update UI immediately (to hide lines number)
+      } else {
+        updateHTML_UI(); // Normal update
       }
+
       if(gameInstance) {
         const scene = gameInstance.scene.getScene('GameScene');
         if(scene) scene.drawBoard();
@@ -371,17 +379,26 @@
     });
   }
 
-  function trigger3DDice(finalVal) {
+  function trigger3DDice(finalVal, callback) {
     const scene = document.getElementById('dice-scene');
     const cube = document.getElementById('diceCube');
     scene.style.display = 'flex';
-    sndRoll.currentTime = 0; sndRoll.play();
+    
+    // Play Roll Sound
+    sndRoll.currentTime = 0; 
+    sndRoll.play().catch(() => {}); // catch needed if browser blocks
+
     cube.className = 'cube rolling';
+    
     setTimeout(() => {
       cube.classList.remove('rolling');
       void cube.offsetWidth;
       cube.className = `cube show-${finalVal}`;
-      setTimeout(() => { scene.style.display = 'none'; }, 1200);
+      
+      setTimeout(() => { 
+        scene.style.display = 'none'; 
+        if(callback) callback();
+      }, 1200);
     }, 800);
   }
 
@@ -420,7 +437,15 @@
     Object.values(players).forEach(p => {
       scoreCont.innerHTML += `<div class="score-item" style="color:${PLAYER_CONFIG[p.colorIdx].css}"><div class="score-dot" style="background:${PLAYER_CONFIG[p.colorIdx].css}"></div><span>${p.score}</span></div>`;
     });
-    document.getElementById('linesLeft').innerText = roomData.dice.rem;
+    
+    // --- LINES LEFT LOGIC (DELAY FIX) ---
+    const linesEl = document.getElementById('linesLeft');
+    if(isRollingAnim) {
+        // While rolling, show "..."
+        linesEl.innerText = "...";
+    } else {
+        linesEl.innerText = roomData.dice.rem;
+    }
 
     if(roomData.state === 'playing') {
       const turnUid = roomData.turnOrder[roomData.turnIndex];
@@ -429,8 +454,15 @@
       const rollBtn = document.getElementById('rollBtn');
       if(isMe) {
         turnLabel.innerText = "YOUR TURN"; turnLabel.style.background = PLAYER_CONFIG[players[turnUid].colorIdx].css; turnLabel.style.color = "white";
-        if(roomData.dice.rem > 0) { rollBtn.innerText = "DRAW LINES"; rollBtn.disabled = true; rollBtn.style.opacity = "1"; }
-        else { rollBtn.innerText = "ROLL DICE"; rollBtn.disabled = false; }
+        // Disable button if rolling or if lines > 0
+        if(roomData.dice.rem > 0 || isRollingAnim) { 
+            rollBtn.innerText = isRollingAnim ? "ROLLING..." : "DRAW LINES"; 
+            rollBtn.disabled = true; 
+            rollBtn.style.opacity = isRollingAnim ? "0.5" : "1"; 
+        } else { 
+            rollBtn.innerText = "ROLL DICE"; 
+            rollBtn.disabled = false; 
+        }
       } else {
         turnLabel.innerText = `${players[turnUid].name}'s Turn`; turnLabel.style.background = "white"; turnLabel.style.color = PLAYER_CONFIG[players[turnUid].colorIdx].css; turnLabel.style.border = `2px solid ${PLAYER_CONFIG[players[turnUid].colorIdx].css}`;
         rollBtn.innerText = "WAITING..."; rollBtn.disabled = true;
@@ -442,6 +474,12 @@
     if(!roomData || roomData.state !== 'playing') return;
     const turnUid = roomData.turnOrder[roomData.turnIndex];
     if(turnUid !== myUid || roomData.dice.rem > 0) return;
+    
+    // Attempt to unlock audio context if locked
+    sndRoll.play().catch(()=>{}); 
+    sndBoom.play().then(()=>{ sndBoom.pause(); sndBoom.currentTime=0; }).catch(()=>{});
+    sndLucky.play().then(()=>{ sndLucky.pause(); sndLucky.currentTime=0; }).catch(()=>{});
+
     const finalVal = Math.floor(Math.random() * 6) + 1;
     db.ref(`rooms/${currentRoom}`).update({ dice: { val: finalVal, rem: finalVal }, latestRoll: { val: finalVal, ts: Date.now() }, lastActive: Date.now() });
   };
@@ -480,7 +518,6 @@
       const boxes = roomData.boxes || {};
       const specials = roomData.specialBoxes || {};
 
-      // DRAW BOXES (Mystery Logic: Only show icon if taken)
       for(let r=0; r<rows; r++) {
         for(let c=0; c<cols; c++) {
           const key = `${r}_${c}`;
@@ -489,13 +526,11 @@
           
           const ownerIdx = boxes[key];
           if(ownerIdx !== undefined) {
-            // Box is taken
             const pc = PLAYER_CONFIG[ownerIdx];
             this.graphics.fillStyle(pc.hex, 0.3);
             this.graphics.fillRect(offsetX + c*cellSize, offsetY + r*cellSize, cellSize, cellSize);
             
             if(roomData.config.mode === 'lucky' && specials[key]) {
-                // Reveal Icon
                 let icon = '';
                 if(specials[key] === 'bonus') icon = '⭐';
                 if(specials[key] === 'boom') icon = '💣';
@@ -509,7 +544,6 @@
         }
       }
 
-      // GRID
       for(let r=0; r<=rows; r++) for(let c=0; c<cols; c++) {
         const id = `h_${r}_${c}`; const x = offsetX + c*cellSize; const y = offsetY + r*cellSize;
         this.drawEdge(id, x, y, x+cellSize, y, lineThick, true, cellSize);
@@ -543,7 +577,7 @@
 
   function attemptClaim(edgeId) {
     if(!roomData || roomData.state !== 'playing' || roomData.dice.rem <= 0) return;
-    if(document.getElementById('dice-scene').style.display === 'flex') return;
+    if(isRollingAnim) return; // Can't draw while rolling
     const turnUid = roomData.turnOrder[roomData.turnIndex];
     if(turnUid !== myUid) return;
 
@@ -560,6 +594,7 @@
       if(!room.boxes) room.boxes = {};
       let boxesMade = 0;
       let hitBoom = false; 
+      let isLucky = false;
       
       const check = (r, c) => {
         if(r<0 || c<0 || r>=room.config.rows || c>=room.config.cols) return;
@@ -571,12 +606,12 @@
           room.filledBoxes++;
           boxesMade++;
 
-          // LUCKY LOGIC (Only calculate points, don't reveal yet)
           let points = 1;
           const bKey = `${r}_${c}`;
           if(room.config.mode === 'lucky' && room.specialBoxes) {
              if(room.specialBoxes[bKey] === 'bonus') {
                 points = 3;
+                isLucky = true;
              } else if(room.specialBoxes[bKey] === 'boom') {
                 hitBoom = true;
              }
@@ -596,17 +631,28 @@
       }
       else {
         if(hitBoom) {
-             // BOOM PENALTY: Lose turn immediately
              room.dice.rem = 0;
              room.turnIndex = (room.turnIndex + 1) % room.turnOrder.length;
         } else if(room.dice.rem === 0) {
              room.turnIndex = (room.turnIndex + 1) % room.turnOrder.length;
         }
       }
-      
       room.lastActive = Date.now();
-      return room;
-    }).then(() => sndLine.play());
+      
+      // Determine Sound to play
+      let sType = 'line';
+      if(hitBoom) sType = 'boom';
+      else if(isLucky) sType = 'lucky';
+      return { ...room, soundTrigger: sType }; // Pass sound trigger to client
+      
+    }).then((res) => {
+        if(res.committed) {
+             const s = res.snapshot.val().soundTrigger;
+             if(s === 'boom') sndBoom.play();
+             else if(s === 'lucky') sndLucky.play();
+             else sndLine.play();
+        }
+    });
   }
   </script>
 </body>
