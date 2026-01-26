@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="utf-8" />
-  <title>Dots & Dice (3D Multiplayer)</title>
+  <title>Dots & Dice (Mystery Lucky Mode)</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
   <style>
     /* BASIC SETUP */
@@ -21,26 +21,19 @@
       width: 85%; max-width: 350px; left: 50%; top: 50%; transform: translate(-50%, -50%);
     }
 
-    /* --- 3D DICE CSS START --- */
+    /* --- 3D DICE CSS --- */
     #dice-scene {
       position: fixed; top: 0; left: 0; width: 100%; height: 100%;
       background: rgba(0,0,0,0.6); z-index: 3000;
       display: none; align-items: center; justify-content: center;
-      perspective: 1000px; /* Gives 3D depth */
+      perspective: 1000px;
     }
-
     .cube {
-      width: 100px; height: 100px;
-      position: relative;
-      transform-style: preserve-3d;
-      transform: translateZ(-50px);
+      width: 100px; height: 100px; position: relative;
+      transform-style: preserve-3d; transform: translateZ(-50px);
       transition: transform 1s ease-out;
     }
-
-    .cube.rolling {
-      animation: spinDice 0.8s linear infinite;
-    }
-
+    .cube.rolling { animation: spinDice 0.8s linear infinite; }
     .face {
       position: absolute; width: 100px; height: 100px;
       background: white; border: 2px solid #ccc; border-radius: 10px;
@@ -48,33 +41,25 @@
       font-size: 40px; font-weight: bold; color: #333;
       box-shadow: inset 0 0 15px rgba(0,0,0,0.1);
     }
-
-    /* Positioning the 6 faces */
     .face.front  { transform: rotateY(0deg) translateZ(50px); }
     .face.back   { transform: rotateY(180deg) translateZ(50px); }
     .face.right  { transform: rotateY(90deg) translateZ(50px); }
     .face.left   { transform: rotateY(-90deg) translateZ(50px); }
     .face.top    { transform: rotateX(90deg) translateZ(50px); }
     .face.bottom { transform: rotateX(-90deg) translateZ(50px); }
-
-    /* Dot styling for dice faces */
     .dot-grid { display: grid; grid-template-columns: repeat(3, 1fr); grid-template-rows: repeat(3, 1fr); width: 70%; height: 70%; }
     .d-dot { background: #333; border-radius: 50%; width: 12px; height: 12px; margin: auto; }
     
-    /* Animations */
     @keyframes spinDice {
       0% { transform: rotateX(0deg) rotateY(0deg) rotateZ(0deg); }
       100% { transform: rotateX(720deg) rotateY(360deg) rotateZ(360deg); }
     }
-    
-    /* Final Positions */
     .show-1 { transform: rotateX(0deg) rotateY(0deg); }
     .show-6 { transform: rotateX(180deg) rotateY(0deg); }
     .show-2 { transform: rotateY(-90deg); }
     .show-5 { transform: rotateY(90deg); }
     .show-3 { transform: rotateX(-90deg); }
     .show-4 { transform: rotateX(90deg); }
-    /* --- 3D DICE CSS END --- */
 
     /* BARS */
     .top-bar { position: absolute; top: 0; left: 0; right: 0; height: 80px; background: rgba(255, 255, 255, 0.95); display: flex; align-items: center; justify-content: space-between; padding: 0 10px; z-index: 500; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
@@ -92,23 +77,21 @@
       position: absolute; top:0; left:0; width:100%; height:100%;
       background: rgba(0,0,0,0.92); color: white; z-index: 2000; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center;
     }
-
-    /* SCOREBOARD */
     .score-item { display: flex; flex-direction: column; align-items: center; margin: 0 5px; font-weight: bold; font-size: 14px; }
     .score-dot { width: 12px; height: 12px; border-radius: 50%; margin-bottom: 2px; }
-
-    /* PLAYER COLORS */
-    .p-red { color: #ff4444; }
-    .p-blue { color: #2f7bff; }
-    .p-green { color: #00cc00; }
-    .p-orange { color: #ffbb00; }
   </style>
 </head>
 <body>
 
   <div id="dice-scene">
     <div class="cube" id="diceCube">
-      <div class="face front"><div class="dot-grid"><div style="grid-area:2/2" class="d-dot"></div></div></div> <div class="face back"><div class="dot-grid"><div style="grid-area:1/1" class="d-dot"></div><div style="grid-area:1/3" class="d-dot"></div><div style="grid-area:2/1" class="d-dot"></div><div style="grid-area:2/3" class="d-dot"></div><div style="grid-area:3/1" class="d-dot"></div><div style="grid-area:3/3" class="d-dot"></div></div></div> <div class="face right"><div class="dot-grid"><div style="grid-area:1/3" class="d-dot"></div><div style="grid-area:3/1" class="d-dot"></div></div></div> <div class="face left"><div class="dot-grid"><div style="grid-area:1/1" class="d-dot"></div><div style="grid-area:1/3" class="d-dot"></div><div style="grid-area:2/2" class="d-dot"></div><div style="grid-area:3/1" class="d-dot"></div><div style="grid-area:3/3" class="d-dot"></div></div></div> <div class="face top"><div class="dot-grid"><div style="grid-area:1/1" class="d-dot"></div><div style="grid-area:2/2" class="d-dot"></div><div style="grid-area:3/3" class="d-dot"></div></div></div> <div class="face bottom"><div class="dot-grid"><div style="grid-area:1/1" class="d-dot"></div><div style="grid-area:1/3" class="d-dot"></div><div style="grid-area:3/1" class="d-dot"></div><div style="grid-area:3/3" class="d-dot"></div></div></div> </div>
+      <div class="face front"><div class="dot-grid"><div style="grid-area:2/2" class="d-dot"></div></div></div>
+      <div class="face back"><div class="dot-grid"><div style="grid-area:1/1" class="d-dot"></div><div style="grid-area:1/3" class="d-dot"></div><div style="grid-area:2/1" class="d-dot"></div><div style="grid-area:2/3" class="d-dot"></div><div style="grid-area:3/1" class="d-dot"></div><div style="grid-area:3/3" class="d-dot"></div></div></div>
+      <div class="face right"><div class="dot-grid"><div style="grid-area:1/3" class="d-dot"></div><div style="grid-area:3/1" class="d-dot"></div></div></div>
+      <div class="face left"><div class="dot-grid"><div style="grid-area:1/1" class="d-dot"></div><div style="grid-area:1/3" class="d-dot"></div><div style="grid-area:2/2" class="d-dot"></div><div style="grid-area:3/1" class="d-dot"></div><div style="grid-area:3/3" class="d-dot"></div></div></div>
+      <div class="face top"><div class="dot-grid"><div style="grid-area:1/1" class="d-dot"></div><div style="grid-area:2/2" class="d-dot"></div><div style="grid-area:3/3" class="d-dot"></div></div></div>
+      <div class="face bottom"><div class="dot-grid"><div style="grid-area:1/1" class="d-dot"></div><div style="grid-area:1/3" class="d-dot"></div><div style="grid-area:3/1" class="d-dot"></div><div style="grid-area:3/3" class="d-dot"></div></div></div>
+    </div>
   </div>
   
   <div id="game-container"></div>
@@ -137,6 +120,14 @@
     <input id="roomInput" placeholder="Room Code (e.g. 1001)" maxlength="6" style="text-align: center; font-weight: bold; letter-spacing: 2px;"/>
     
     <div style="margin: 10px 0; text-align: left; padding: 0 5%;">
+      <label style="font-size: 12px; color: #666; font-weight:bold;">GAME MODE:</label>
+      <select id="gameMode">
+        <option value="classic">Classic (Normal)</option>
+        <option value="lucky" selected>Lucky Mode (Mystery)</option>
+      </select>
+    </div>
+
+    <div style="margin: 10px 0; text-align: left; padding: 0 5%;">
       <label style="font-size: 12px; color: #666; font-weight:bold;">PLAYERS:</label>
       <select id="maxPlayers">
         <option value="2" selected>2 Players</option>
@@ -151,7 +142,6 @@
         <option value="3">3 x 3 (Small)</option>
         <option value="4" selected>4 x 4 (Classic)</option>
         <option value="5">5 x 5 (Medium)</option>
-        <option value="6">6 x 6 (Large)</option>
         <option value="auto">Auto (Screen Fit)</option>
       </select>
     </div>
@@ -169,8 +159,7 @@
     <div style="flex-grow: 1; text-align: center; margin: 0 10px;">
         <span id="turnLabel" style="padding: 6px 12px; border-radius: 20px; font-size: 13px; font-weight:bold; background:#eee; display: inline-block; white-space: nowrap;">Connecting...</span>
     </div>
-    <div id="scoreContainer" style="display:flex; gap:8px;">
-      </div>
+    <div id="scoreContainer" style="display:flex; gap:8px;"></div>
   </div>
 
   <div id="gameUI_Bottom" class="bottom-bar hidden">
@@ -187,7 +176,7 @@
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
 
   <script>
-  // 1. CONFIGURATION
+  // CONFIG
   const FIREBASE_CONFIG = {
     apiKey: "AIzaSyCwy91uqMBAM_kXfxd8bE6LsVOXdNL54i8",
     authDomain: "dotgame-4a8df.firebaseapp.com",
@@ -209,17 +198,11 @@
   const db = firebase.database();
   const auth = firebase.auth();
   let myUid = null;
-
-  // AUTO LOAD NAME
   const savedName = localStorage.getItem('dotsDiceName');
   if(savedName) document.getElementById('displayName').value = savedName;
 
-  auth.signInAnonymously().then(u => {
-    myUid = u.user.uid;
-    console.log("Logged in:", myUid);
-  }).catch(e => alert("Net Error: " + e.message));
+  auth.signInAnonymously().then(u => { myUid = u.user.uid; }).catch(e => alert("Net Error"));
 
-  // SOUNDS
   const sndRoll = new Audio('https://cdn.discordapp.com/attachments/1420003318096461825/1459851313398546472/dice-roll-sound.mp3?ex=697542bb&is=6973f13b&hm=c8ef082f052c21f57395b20dc89a0ce5bae5ce835c72ee7131006b1ffc46fee1&');
   const sndLine = new Audio('https://assets.mixkit.co/active_storage/sfx/2571/2571-preview.mp3');
 
@@ -227,57 +210,72 @@
   let roomData = null;
   let gameInstance = null;
   let autoDeleteInterval = null;
-  let lastProcessedRoll = 0; // To track if we showed animation
+  let lastProcessedRoll = 0;
 
-  // --- BUTTON EVENTS ---
+  // --- CREATE ROOM ---
   document.getElementById('createRoomBtn').onclick = async () => {
     if(!myUid) return alert("Connecting...");
     const code = document.getElementById('roomInput').value.trim().toUpperCase();
     const name = document.getElementById('displayName').value.trim() || 'Host';
     const sizeVal = document.getElementById('gridSize').value;
     const maxP = parseInt(document.getElementById('maxPlayers').value);
+    const mode = document.getElementById('gameMode').value;
     
     if(!code) return alert("Enter Room Code");
     localStorage.setItem('dotsDiceName', name);
 
     const snap = await db.ref('rooms/' + code).once('value');
-    if(snap.exists() && Date.now() - (snap.val().lastActive||0) < 600000) {
-      return alert("Code taken!");
-    }
+    if(snap.exists() && Date.now() - (snap.val().lastActive||0) < 600000) return alert("Code taken!");
 
     let rows, cols;
     if(sizeVal === 'auto') {
-      const safeW = window.innerWidth - 40;
-      const safeH = window.innerHeight - 180;
+      const safeW = window.innerWidth - 40; const safeH = window.innerHeight - 180;
       cols = Math.min(Math.floor(safeW / 55), 10);
       rows = Math.min(Math.floor(safeH / 55), 12);
-    } else {
-      rows = cols = parseInt(sizeVal);
+    } else { rows = cols = parseInt(sizeVal); }
+
+    // GENERATE LUCKY BOXES (Hidden by default)
+    let specialBoxes = {};
+    if(mode === 'lucky') {
+      const allCoords = [];
+      for(let r=0; r<rows; r++) for(let c=0; c<cols; c++) allCoords.push(`${r}_${c}`);
+      
+      // Shuffle
+      for (let i = allCoords.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [allCoords[i], allCoords[j]] = [allCoords[j], allCoords[i]];
+      }
+      
+      // Assign 2 Bonus, 1 Boom
+      if(allCoords.length >= 3) {
+        specialBoxes[allCoords[0]] = 'bonus'; // Star 1
+        specialBoxes[allCoords[1]] = 'bonus'; // Star 2
+        specialBoxes[allCoords[2]] = 'boom';  // Boom 1
+      }
     }
 
     await db.ref('rooms/' + code).set({
-      config: { maxPlayers: maxP, rows, cols },
+      config: { maxPlayers: maxP, rows, cols, mode }, // Save Mode
       players: { [myUid]: { name, colorIdx: 0, score: 0 } },
       state: 'waiting',
       lastActive: Date.now(),
       turnOrder: [],
       turnIndex: 0,
       dice: { val: 0, rem: 0 },
-      // NEW: Track roll events
       latestRoll: { val: 0, ts: 0 },
       filledBoxes: 0,
       totalBoxes: rows * cols,
-      edges: {}, boxes: {}
+      edges: {}, boxes: {},
+      specialBoxes: specialBoxes // Save Specials
     });
-
     enterRoom(code, true);
   };
 
+  // --- JOIN ROOM ---
   document.getElementById('joinRoomBtn').onclick = async () => {
     if(!myUid) return alert("Connecting...");
     const code = document.getElementById('roomInput').value.trim().toUpperCase();
     const name = document.getElementById('displayName').value.trim() || 'Player';
-    
     if(!code) return alert("Enter Room Code");
     localStorage.setItem('dotsDiceName', name);
 
@@ -287,35 +285,23 @@
     const r = snap.val();
 
     const pCount = Object.keys(r.players || {}).length;
-    if(r.players && !r.players[myUid] && pCount >= r.config.maxPlayers) {
-      return alert("Room is Full!");
-    }
+    if(r.players && !r.players[myUid] && pCount >= r.config.maxPlayers) return alert("Room is Full!");
 
     const colorIdx = r.players[myUid] ? r.players[myUid].colorIdx : pCount;
-
     await roomRef.child('players/' + myUid).update({ name, colorIdx, score: 0 });
     
     const newSnap = await roomRef.once('value');
     const newR = newSnap.val();
-    const newCount = Object.keys(newR.players).length;
-
-    if(newR.state === 'waiting' && newCount >= newR.config.maxPlayers) {
-      // SHUFFLE & START
+    if(newR.state === 'waiting' && Object.keys(newR.players).length >= newR.config.maxPlayers) {
       const pIds = Object.keys(newR.players);
       for (let i = pIds.length - 1; i > 0; i--) {
         const j = Math.floor(Math.random() * (i + 1));
         [pIds[i], pIds[j]] = [pIds[j], pIds[i]];
       }
-      await roomRef.update({
-        state: 'playing',
-        turnOrder: pIds,
-        turnIndex: 0,
-        lastActive: Date.now()
-      });
+      await roomRef.update({ state: 'playing', turnOrder: pIds, turnIndex: 0, lastActive: Date.now() });
     } else {
       await roomRef.update({ lastActive: Date.now() });
     }
-    
     enterRoom(code, false);
   };
 
@@ -327,9 +313,7 @@
     db.ref(`rooms/${currentRoom}`).transaction(r => {
       if(!r) return r;
       r.state = 'playing';
-      r.edges = {};
-      r.boxes = {};
-      r.filledBoxes = 0;
+      r.edges = {}; r.boxes = {}; r.filledBoxes = 0;
       r.dice = { val: 0, rem: 0 };
       r.latestRoll = { val: 0, ts: 0 };
       const pIds = Object.keys(r.players);
@@ -337,9 +321,25 @@
         const j = Math.floor(Math.random() * (i + 1));
         [pIds[i], pIds[j]] = [pIds[j], pIds[i]];
       }
-      r.turnOrder = pIds;
-      r.turnIndex = 0;
+      r.turnOrder = pIds; r.turnIndex = 0;
       Object.keys(r.players).forEach(uid => { r.players[uid].score = 0; });
+      
+      // RE-GENERATE LUCKY BOXES FOR NEW GAME
+      if(r.config.mode === 'lucky') {
+        const allCoords = [];
+        for(let row=0; row<r.config.rows; row++) for(let col=0; col<r.config.cols; col++) allCoords.push(`${row}_${col}`);
+        for (let i = allCoords.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [allCoords[i], allCoords[j]] = [allCoords[j], allCoords[i]];
+        }
+        r.specialBoxes = {};
+        if(allCoords.length >= 3) {
+            r.specialBoxes[allCoords[0]] = 'bonus';
+            r.specialBoxes[allCoords[1]] = 'bonus';
+            r.specialBoxes[allCoords[2]] = 'boom';
+        }
+      }
+
       return r;
     });
   };
@@ -348,33 +348,22 @@
     currentRoom = code;
     document.getElementById('lobbyUI').classList.add('hidden');
     document.getElementById('roomLabel').innerText = code;
+    document.getElementById('waitingOverlay').classList.remove('hidden');
+    if(isHost) document.getElementById('shareCode').innerText = code;
+    else { document.getElementById('waitText').innerText = "Connecting..."; document.getElementById('shareCode').innerText = code; }
 
-    if(isHost) {
-      document.getElementById('waitingOverlay').classList.remove('hidden');
-      document.getElementById('shareCode').innerText = code;
-      autoDeleteInterval = setInterval(() => {
-        db.ref(`rooms/${currentRoom}`).update({ lastActive: Date.now() });
-      }, 30000);
-    } else {
-      document.getElementById('waitingOverlay').classList.remove('hidden');
-      document.getElementById('waitText').innerText = "Connecting...";
-      document.getElementById('shareCode').innerText = code;
-    }
+    if(isHost) autoDeleteInterval = setInterval(() => { db.ref(`rooms/${currentRoom}`).update({ lastActive: Date.now() }); }, 30000);
 
     if(!gameInstance) initPhaser();
 
     db.ref('rooms/' + code).on('value', snap => {
       roomData = snap.val();
       if(!roomData) { alert("Room closed."); location.reload(); return; }
-      
       updateHTML_UI();
-      
-      // CHECK FOR NEW ROLL
       if(roomData.latestRoll && roomData.latestRoll.ts > lastProcessedRoll) {
         lastProcessedRoll = roomData.latestRoll.ts;
         trigger3DDice(roomData.latestRoll.val);
       }
-      
       if(gameInstance) {
         const scene = gameInstance.scene.getScene('GameScene');
         if(scene) scene.drawBoard();
@@ -382,46 +371,27 @@
     });
   }
 
-  // --- NEW 3D DICE ANIMATION LOGIC ---
   function trigger3DDice(finalVal) {
     const scene = document.getElementById('dice-scene');
     const cube = document.getElementById('diceCube');
-    
     scene.style.display = 'flex';
-    sndRoll.currentTime = 0;
-    sndRoll.play();
-
-    // Start rolling animation
+    sndRoll.currentTime = 0; sndRoll.play();
     cube.className = 'cube rolling';
-    
-    // After 800ms, snap to result
     setTimeout(() => {
       cube.classList.remove('rolling');
-      // Force Reflow
       void cube.offsetWidth;
       cube.className = `cube show-${finalVal}`;
-      
-      // Hide after showing result for 1.2s
-      setTimeout(() => {
-        scene.style.display = 'none';
-      }, 1200);
+      setTimeout(() => { scene.style.display = 'none'; }, 1200);
     }, 800);
   }
 
   function updateHTML_UI() {
     const players = roomData.players || {};
-    const pCount = Object.keys(players).length;
-    const maxP = roomData.config.maxPlayers;
-    
     const waitOverlay = document.getElementById('waitingOverlay');
-    const playerListDiv = document.getElementById('playerListDisplay');
-    
     if(roomData.state === 'waiting') {
       waitOverlay.classList.remove('hidden');
-      document.getElementById('waitText').innerText = `Waiting: ${pCount} / ${maxP} Players joined`;
-      playerListDiv.innerHTML = Object.values(players).map(p => 
-        `<span style="color:${PLAYER_CONFIG[p.colorIdx].css}">${p.name}</span>`
-      ).join(', ');
+      document.getElementById('waitText').innerText = `Waiting: ${Object.keys(players).length} / ${roomData.config.maxPlayers} Players`;
+      document.getElementById('playerListDisplay').innerHTML = Object.values(players).map(p => `<span style="color:${PLAYER_CONFIG[p.colorIdx].css}">${p.name}</span>`).join(', ');
     } else {
       waitOverlay.classList.add('hidden');
       document.getElementById('gameUI_Top').classList.remove('hidden');
@@ -431,192 +401,126 @@
     if(roomData.state === 'finished') {
       document.getElementById('gameOverOverlay').classList.remove('hidden');
       document.getElementById('gameUI_Bottom').classList.add('hidden');
-      
-      let maxScore = -1;
-      let winners = [];
-      Object.values(players).forEach(p => {
-        if(p.score > maxScore) { maxScore = p.score; winners = [p]; }
-        else if(p.score === maxScore) { winners.push(p); }
-      });
-      
-      const wNames = winners.map(p => p.name).join(' & ');
+      let maxScore = -999; let winners = [];
+      Object.values(players).forEach(p => { if(p.score > maxScore) { maxScore = p.score; winners = [p]; } else if(p.score === maxScore) { winners.push(p); } });
       const wEl = document.getElementById('winnerText');
-      wEl.innerText = `Winner: ${wNames}`;
+      wEl.innerText = `Winner: ${winners.map(p => p.name).join(' & ')}`;
       wEl.style.color = PLAYER_CONFIG[winners[0].colorIdx].css;
-      
       let html = "";
-      Object.values(players).forEach(p => {
-         html += `<div style="color:${PLAYER_CONFIG[p.colorIdx].css}">${p.name}: ${p.score}</div>`;
-      });
+      Object.values(players).forEach(p => { html += `<div style="color:${PLAYER_CONFIG[p.colorIdx].css}">${p.name}: ${p.score}</div>`; });
       document.getElementById('finalScores').innerHTML = html;
       
-      if(roomData.turnOrder && roomData.turnOrder.includes(myUid) && myUid === Object.keys(players)[0]) {
-          document.getElementById('playAgainBtn').style.display = 'inline-block';
-          document.getElementById('hostMsg').style.display = 'none';
-      } else {
-          document.getElementById('playAgainBtn').style.display = 'none';
-          document.getElementById('hostMsg').style.display = 'block';
-      }
-    } else {
-      document.getElementById('gameOverOverlay').classList.add('hidden');
-    }
+      const isHost = (roomData.turnOrder && roomData.turnOrder[0] === myUid);
+      document.getElementById('playAgainBtn').style.display = isHost ? 'inline-block' : 'none';
+      document.getElementById('hostMsg').style.display = isHost ? 'none' : 'block';
+    } else { document.getElementById('gameOverOverlay').classList.add('hidden'); }
 
     const scoreCont = document.getElementById('scoreContainer');
     scoreCont.innerHTML = '';
     Object.values(players).forEach(p => {
-      const pc = PLAYER_CONFIG[p.colorIdx];
-      scoreCont.innerHTML += `
-        <div class="score-item" style="color:${pc.css}">
-          <div class="score-dot" style="background:${pc.css}"></div>
-          <span>${p.score}</span>
-        </div>`;
+      scoreCont.innerHTML += `<div class="score-item" style="color:${PLAYER_CONFIG[p.colorIdx].css}"><div class="score-dot" style="background:${PLAYER_CONFIG[p.colorIdx].css}"></div><span>${p.score}</span></div>`;
     });
-    
     document.getElementById('linesLeft').innerText = roomData.dice.rem;
 
     if(roomData.state === 'playing') {
       const turnUid = roomData.turnOrder[roomData.turnIndex];
       const isMe = (turnUid === myUid);
-      const turnPlayer = players[turnUid];
-      const pc = PLAYER_CONFIG[turnPlayer.colorIdx];
-      
       const turnLabel = document.getElementById('turnLabel');
       const rollBtn = document.getElementById('rollBtn');
-      
       if(isMe) {
-        turnLabel.innerText = "YOUR TURN";
-        turnLabel.style.background = pc.css;
-        turnLabel.style.color = "white";
-        
-        if(roomData.dice.rem > 0) {
-          rollBtn.innerText = "DRAW LINES";
-          rollBtn.disabled = true;
-          rollBtn.style.opacity = "1";
-        } else {
-          rollBtn.innerText = "ROLL DICE";
-          rollBtn.disabled = false;
-        }
+        turnLabel.innerText = "YOUR TURN"; turnLabel.style.background = PLAYER_CONFIG[players[turnUid].colorIdx].css; turnLabel.style.color = "white";
+        if(roomData.dice.rem > 0) { rollBtn.innerText = "DRAW LINES"; rollBtn.disabled = true; rollBtn.style.opacity = "1"; }
+        else { rollBtn.innerText = "ROLL DICE"; rollBtn.disabled = false; }
       } else {
-        turnLabel.innerText = `${turnPlayer.name}'s Turn`;
-        turnLabel.style.background = "white";
-        turnLabel.style.color = pc.css;
-        turnLabel.style.border = `2px solid ${pc.css}`;
-        
-        rollBtn.innerText = "WAITING...";
-        rollBtn.disabled = true;
+        turnLabel.innerText = `${players[turnUid].name}'s Turn`; turnLabel.style.background = "white"; turnLabel.style.color = PLAYER_CONFIG[players[turnUid].colorIdx].css; turnLabel.style.border = `2px solid ${PLAYER_CONFIG[players[turnUid].colorIdx].css}`;
+        rollBtn.innerText = "WAITING..."; rollBtn.disabled = true;
       }
     }
   }
 
-  // --- MODIFIED ROLL CLICK ---
   document.getElementById('rollBtn').onclick = () => {
     if(!roomData || roomData.state !== 'playing') return;
     const turnUid = roomData.turnOrder[roomData.turnIndex];
     if(turnUid !== myUid || roomData.dice.rem > 0) return;
-    
-    // Instead of local animation, we update DB immediately
     const finalVal = Math.floor(Math.random() * 6) + 1;
-    
-    db.ref(`rooms/${currentRoom}`).update({
-      dice: { val: finalVal, rem: finalVal },
-      latestRoll: { val: finalVal, ts: Date.now() }, // Triggers animation for everyone
-      lastActive: Date.now()
-    });
+    db.ref(`rooms/${currentRoom}`).update({ dice: { val: finalVal, rem: finalVal }, latestRoll: { val: finalVal, ts: Date.now() }, lastActive: Date.now() });
   };
 
-  // --- FIXED PHASER ENGINE ---
   function initPhaser() {
-    gameInstance = new Phaser.Game({
-      type: Phaser.AUTO, 
-      parent: 'game-container',
-      width: window.innerWidth, 
-      height: window.innerHeight,
-      transparent: true,
-      scale: { mode: Phaser.Scale.RESIZE },
-      scene: GameScene
-    });
+    gameInstance = new Phaser.Game({ type: Phaser.AUTO, parent: 'game-container', width: window.innerWidth, height: window.innerHeight, transparent: true, scale: { mode: Phaser.Scale.RESIZE }, scene: GameScene });
   }
 
   class GameScene extends Phaser.Scene {
     constructor() { super('GameScene'); }
-    
     create() {
       this.graphics = this.add.graphics();
       this.clickZones = [];
-      this.text = this.add.text(this.scale.width/2, this.scale.height/2, 'Loading Grid...', { color: '#000', fontSize: '20px' }).setOrigin(0.5);
-      
+      this.specialIcons = [];
       this.events.on('updateBoard', this.drawBoard, this);
       this.scale.on('resize', this.drawBoard, this);
-      
       this.time.delayedCall(500, () => this.drawBoard());
     }
 
     drawBoard() {
       if(!roomData || !roomData.config) return;
-      if(this.text) this.text.setVisible(false);
-
       this.graphics.clear();
-      this.clickZones.forEach(z => z.destroy());
-      this.clickZones = [];
+      this.clickZones.forEach(z => z.destroy()); this.clickZones = [];
+      this.specialIcons.forEach(i => i.destroy()); this.specialIcons = [];
 
       const { rows, cols } = roomData.config;
-      const width = this.scale.width;
-      const height = this.scale.height;
-      
-      const topPad = 85; 
-      const botPad = 100;
-      const availW = width - 30;
-      const availH = height - (topPad + botPad);
-      
-      const cellSize = Math.min(availW / cols, availH / rows);
+      const width = this.scale.width; const height = this.scale.height;
+      const topPad = 85; const botPad = 100;
+      const cellSize = Math.min((width-30)/cols, (height-(topPad+botPad))/rows);
       const dotRadius = Math.max(3, cellSize * 0.08);
       const lineThick = Math.max(3, cellSize * 0.07);
-      
       const offsetX = (width - (cols * cellSize)) / 2;
-      const offsetY = topPad + (availH - (rows * cellSize)) / 2;
+      const offsetY = topPad + (height-(topPad+botPad) - (rows * cellSize)) / 2;
 
       const edges = roomData.edges || {};
       const boxes = roomData.boxes || {};
+      const specials = roomData.specialBoxes || {};
 
-      // DRAW BOXES
+      // DRAW BOXES (Mystery Logic: Only show icon if taken)
       for(let r=0; r<rows; r++) {
         for(let c=0; c<cols; c++) {
-          const ownerIdx = boxes[`${r}_${c}`];
+          const key = `${r}_${c}`;
+          const cx = offsetX + c*cellSize + cellSize/2;
+          const cy = offsetY + r*cellSize + cellSize/2;
+          
+          const ownerIdx = boxes[key];
           if(ownerIdx !== undefined) {
+            // Box is taken
             const pc = PLAYER_CONFIG[ownerIdx];
             this.graphics.fillStyle(pc.hex, 0.3);
             this.graphics.fillRect(offsetX + c*cellSize, offsetY + r*cellSize, cellSize, cellSize);
-            this.graphics.fillStyle(pc.hex, 1);
-            this.graphics.fillCircle(offsetX + c*cellSize + cellSize/2, offsetY + r*cellSize + cellSize/2, 6);
+            
+            if(roomData.config.mode === 'lucky' && specials[key]) {
+                // Reveal Icon
+                let icon = '';
+                if(specials[key] === 'bonus') icon = '⭐';
+                if(specials[key] === 'boom') icon = '💣';
+                const txt = this.add.text(cx, cy, icon, { fontSize: `${cellSize/2}px` }).setOrigin(0.5);
+                this.specialIcons.push(txt);
+            } else {
+                this.graphics.fillStyle(pc.hex, 1);
+                this.graphics.fillCircle(cx, cy, 6);
+            }
           }
         }
       }
 
-      // DRAW LINES (GRID)
-      // Horizontal
-      for(let r=0; r<=rows; r++) {
-        for(let c=0; c<cols; c++) {
-          const id = `h_${r}_${c}`;
-          const x = offsetX + c*cellSize; const y = offsetY + r*cellSize;
-          this.drawEdge(id, x, y, x+cellSize, y, lineThick, true, cellSize);
-        }
+      // GRID
+      for(let r=0; r<=rows; r++) for(let c=0; c<cols; c++) {
+        const id = `h_${r}_${c}`; const x = offsetX + c*cellSize; const y = offsetY + r*cellSize;
+        this.drawEdge(id, x, y, x+cellSize, y, lineThick, true, cellSize);
       }
-      // Vertical
-      for(let r=0; r<rows; r++) {
-        for(let c=0; c<=cols; c++) {
-          const id = `v_${r}_${c}`;
-          const x = offsetX + c*cellSize; const y = offsetY + r*cellSize;
-          this.drawEdge(id, x, y, x, y+cellSize, lineThick, false, cellSize);
-        }
+      for(let r=0; r<rows; r++) for(let c=0; c<=cols; c++) {
+        const id = `v_${r}_${c}`; const x = offsetX + c*cellSize; const y = offsetY + r*cellSize;
+        this.drawEdge(id, x, y, x, y+cellSize, lineThick, false, cellSize);
       }
-
-      // DRAW DOTS
+      
       this.graphics.fillStyle(0x333333, 1);
-      for(let r=0; r<=rows; r++) {
-        for(let c=0; c<=cols; c++) {
-          this.graphics.fillCircle(offsetX + c*cellSize, offsetY + r*cellSize, dotRadius);
-        }
-      }
+      for(let r=0; r<=rows; r++) for(let c=0; c<=cols; c++) this.graphics.fillCircle(offsetX + c*cellSize, offsetY + r*cellSize, dotRadius);
     }
 
     drawEdge(id, x1, y1, x2, y2, thick, isHoriz, cellSize) {
@@ -624,18 +528,13 @@
       if(taken) {
         const pc = PLAYER_CONFIG[taken.cIdx];
         this.graphics.lineStyle(thick, pc.hex, 1);
-        this.graphics.beginPath();
-        this.graphics.moveTo(x1, y1);
-        this.graphics.lineTo(x2, y2);
-        this.graphics.strokePath();
+        this.graphics.beginPath(); this.graphics.moveTo(x1, y1); this.graphics.lineTo(x2, y2); this.graphics.strokePath();
       } else {
         const cx = (x1+x2)/2; const cy = (y1+y2)/2;
-        const w = isHoriz ? cellSize : thick*6;
-        const h = isHoriz ? thick*6 : cellSize;
+        const w = isHoriz ? cellSize : thick*6; const h = isHoriz ? thick*6 : cellSize;
         const zone = this.add.rectangle(cx, cy, w, h, 0xffffff, 0.0001).setInteractive({cursor:'pointer'});
         zone.on('pointerdown', () => attemptClaim(id));
         this.clickZones.push(zone);
-        
         this.graphics.lineStyle(1, 0xdddddd, 0.5);
         this.graphics.beginPath(); this.graphics.moveTo(x1, y1); this.graphics.lineTo(x2, y2); this.graphics.strokePath();
       }
@@ -644,17 +543,13 @@
 
   function attemptClaim(edgeId) {
     if(!roomData || roomData.state !== 'playing' || roomData.dice.rem <= 0) return;
+    if(document.getElementById('dice-scene').style.display === 'flex') return;
     const turnUid = roomData.turnOrder[roomData.turnIndex];
     if(turnUid !== myUid) return;
-    // Don't allow click if dice is still rolling
-    if(document.getElementById('dice-scene').style.display === 'flex') return;
 
     db.ref(`rooms/${currentRoom}`).transaction(room => {
-      if(!room) return room;
-      if(room.state !== 'playing') return;
-      const tUid = room.turnOrder[room.turnIndex];
-      if(tUid !== myUid) return;
-      if(room.dice.rem <= 0) return;
+      if(!room || room.state !== 'playing' || room.dice.rem <= 0) return room;
+      if(room.turnOrder[room.turnIndex] !== myUid) return;
       if(room.edges && room.edges[edgeId]) return;
 
       if(!room.edges) room.edges = {};
@@ -664,6 +559,7 @@
       
       if(!room.boxes) room.boxes = {};
       let boxesMade = 0;
+      let hitBoom = false; 
       
       const check = (r, c) => {
         if(r<0 || c<0 || r>=room.config.rows || c>=room.config.cols) return;
@@ -672,9 +568,20 @@
         const e = room.edges;
         if(e[`h_${r}_${c}`] && e[`h_${r+1}_${c}`] && e[`v_${r}_${c}`] && e[`v_${r}_${c+1}`]) {
           room.boxes[`${r}_${c}`] = pColorIdx;
-          room.players[myUid].score++;
           room.filledBoxes++;
           boxesMade++;
+
+          // LUCKY LOGIC (Only calculate points, don't reveal yet)
+          let points = 1;
+          const bKey = `${r}_${c}`;
+          if(room.config.mode === 'lucky' && room.specialBoxes) {
+             if(room.specialBoxes[bKey] === 'bonus') {
+                points = 3;
+             } else if(room.specialBoxes[bKey] === 'boom') {
+                hitBoom = true;
+             }
+          }
+          room.players[myUid].score += points;
         }
       };
 
@@ -687,8 +594,14 @@
         room.state = 'finished';
         room.dice.rem = 0;
       }
-      else if(room.dice.rem === 0) {
-        room.turnIndex = (room.turnIndex + 1) % room.turnOrder.length;
+      else {
+        if(hitBoom) {
+             // BOOM PENALTY: Lose turn immediately
+             room.dice.rem = 0;
+             room.turnIndex = (room.turnIndex + 1) % room.turnOrder.length;
+        } else if(room.dice.rem === 0) {
+             room.turnIndex = (room.turnIndex + 1) % room.turnOrder.length;
+        }
       }
       
       room.lastActive = Date.now();
